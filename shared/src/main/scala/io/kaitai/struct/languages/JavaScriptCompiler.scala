@@ -297,13 +297,32 @@ class JavaScriptCompiler(typeProvider: ClassTypeProvider, config: RuntimeConfig)
   }
 
   override def condRepeatExprHeader(id: Identifier, io: String, dataType: DataType, needRaw: Boolean, repeatExpr: expr): Unit = {
+    val arrayType = nativeArrayType(dataType)
     if (needRaw)
-      out.puts(s"${privateMemberName(RawIdentifier(id))} = new Array(${expression(repeatExpr)});")
-    out.puts(s"${privateMemberName(id)} = new Array(${expression(repeatExpr)});")
+      out.puts(s"${privateMemberName(RawIdentifier(id))} = new $arrayType(${expression(repeatExpr)});")
+    out.puts(s"${privateMemberName(id)} = new $arrayType(${expression(repeatExpr)});")
     if (debug)
-      out.puts(s"this._debug.${idToStr(id)}.arr = new Array(${expression(repeatExpr)});")
+      out.puts(s"this._debug.${idToStr(id)}.arr = new $arrayType(${expression(repeatExpr)});")
     out.puts(s"for (var i = 0; i < ${expression(repeatExpr)}; i++) {")
     out.inc
+  }
+
+  private
+  def nativeArrayType(dataType: DataType): String = {
+    dataType match {
+      case IntMultiType(false, Width1, _) => "Uint8Array"
+      case IntMultiType(false, Width2, _) => "Uint16Array"
+      case IntMultiType(false, Width4, _) => "Uint32Array"
+
+      case IntMultiType(true, Width1, _) => "Int8Array"
+      case IntMultiType(true, Width2, _) => "Int16Array"
+      case IntMultiType(true, Width4, _) => "Int32Array"
+
+      case FloatMultiType(Width4, _) => "Float32Array"
+      case FloatMultiType(Width8, _) => "Float64Array"
+
+      case _ => "Array"
+    }
   }
 
   override def handleAssignmentRepeatExpr(id: Identifier, expr: String): Unit = {
